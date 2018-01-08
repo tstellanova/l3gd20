@@ -1,0 +1,8 @@
+[package]
+authors = ["Jorge Aparicio <jorge@japaric.io>"]
+name = "l3gd20"
+version = "0.1.0"
+
+[dependencies]
+embedded-hal = { git = "https://github.com/japaric/embedded-hal", branch = "v1" }
+nb = { git = "https://github.com/japaric/nb" }
