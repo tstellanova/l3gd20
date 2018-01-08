@@ -25,13 +25,13 @@ pub struct L3gd20<SPI, CS> {
     cs: CS,
 }
 
-impl<SPI, CS> L3gd20<SPI, CS>
+impl<SPI, CS, E> L3gd20<SPI, CS>
 where
-    SPI: Transfer<u8> + Write<u8, Error = <SPI as Transfer<u8>>::Error>,
+    SPI: Transfer<u8, Error = E> + Write<u8, Error = E>,
     CS: OutputPin,
 {
     /// Creates a new driver from a SPI peripheral and a NCS pin
-    pub fn new(spi: SPI, cs: CS) -> Result<Self, <SPI as Transfer<u8>>::Error> {
+    pub fn new(spi: SPI, cs: CS) -> Result<Self, E> {
         let mut l3gd20 = L3gd20 { spi, cs };
 
         // power up and enable all the axes
@@ -41,7 +41,7 @@ where
     }
 
     /// Temperature measurement + gyroscope measurements
-    pub fn all(&mut self) -> Result<Measurements, <SPI as Transfer<u8>>::Error> {
+    pub fn all(&mut self) -> Result<Measurements, E> {
         let bytes: [u8; 9] = self.read_registers(Register::OUT_TEMP)?;
 
         Ok(Measurements {
@@ -55,7 +55,7 @@ where
     }
 
     /// Gyroscope measurements
-    pub fn gyro(&mut self) -> Result<I16x3, <SPI as Transfer<u8>>::Error> {
+    pub fn gyro(&mut self) -> Result<I16x3, E> {
         let bytes: [u8; 7] = self.read_registers(Register::OUT_X_L)?;
 
         Ok(I16x3 {
@@ -66,16 +66,16 @@ where
     }
 
     /// Temperature sensor measurement
-    pub fn temp(&mut self) -> Result<i8, <SPI as Transfer<u8>>::Error> {
+    pub fn temp(&mut self) -> Result<i8, E> {
         Ok(self.read_register(Register::OUT_TEMP)? as i8)
     }
 
     /// Reads the WHO_AM_I register; should return `0xD4`
-    pub fn who_am_i(&mut self) -> Result<u8, <SPI as Transfer<u8>>::Error> {
+    pub fn who_am_i(&mut self) -> Result<u8, E> {
         self.read_register(Register::WHO_AM_I)
     }
 
-    fn read_register(&mut self, reg: Register) -> Result<u8, <SPI as Transfer<u8>>::Error> {
+    fn read_register(&mut self, reg: Register) -> Result<u8, E> {
         self.cs.set_low();
 
         let mut buffer = [reg.addr() | SINGLE | READ, 0];
@@ -86,7 +86,7 @@ where
         Ok(buffer[1])
     }
 
-    fn read_registers<B>(&mut self, reg: Register) -> Result<B, <SPI as Transfer<u8>>::Error>
+    fn read_registers<B>(&mut self, reg: Register) -> Result<B, E>
     where
         B: Unsize<[u8]>,
     {
@@ -108,7 +108,7 @@ where
         &mut self,
         reg: Register,
         byte: u8,
-    ) -> Result<(), <SPI as Transfer<u8>>::Error> {
+    ) -> Result<(), E> {
         self.cs.set_low();
 
         let buffer = [reg.addr() | SINGLE | WRITE, byte];
