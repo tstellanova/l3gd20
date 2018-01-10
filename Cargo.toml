@@ -5,4 +5,3 @@ version = "0.1.0"
 
 [dependencies]
 embedded-hal = { git = "https://github.com/japaric/embedded-hal", branch = "v1" }
-nb = "0.1.0"
