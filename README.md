@@ -1,6 +1,6 @@
 # `l3gd20`
 
-> A WIP, no_std, generic driver for the L3GD20 (gyroscope)
+> A platform agnostic driver to interface with the L3GD20 (gyroscope)
 
 ## What works
 
@@ -16,10 +16,9 @@
 
 ## Examples
 
-You should find at least one example in the [f3] repository. If that branch is gone, check
-the master branch.
+You should find at least one example in the [f3] crate.
 
-[f3]: https://github.com/japaric/f3/tree/singletons/examples
+[f3]: https://docs.rs/f3/~0.5
 
 ## License
 
