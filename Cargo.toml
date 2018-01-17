@@ -7,7 +7,7 @@ keywords = ["embedded-hal", "gyroscope"]
 license = "MIT OR Apache-2.0"
 name = "l3gd20"
 repository = "https://github.com/japaric/l3gd20"
-version = "0.1.0"
+version = "0.1.1"
 
 [dependencies]
 embedded-hal = "0.1.0"

@@ -1,6 +1,17 @@
-//! A WIP, no_std, generic driver for the L3GD20 (gyroscope)
+//! A platform agnostic driver to interface with the L3GD20 (gyroscope)
+//!
+//! This driver was built using [`embedded-hal`] traits.
+//!
+//! [`embedded-hal`]: https://docs.rs/embedded-hal/~0.1
+//!
+//! # Examples
+//!
+//! You should find at least one example in the [f3] crate.
+//!
+//! [f3]: https://docs.rs/f3/~0.5
 
 #![deny(missing_docs)]
+#![deny(warnings)]
 #![feature(unsize)]
 #![no_std]
 
