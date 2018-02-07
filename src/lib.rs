@@ -157,7 +157,7 @@ where
         let scl = self.read_register(Register::CTRL_REG4)?;
         // Extract scale value from register, ensure that we mask with
         // `0b0000_0011` to extract `FS1-FS2` part of register
-        let scale = match (scl >> 2) & 0x03 {
+        let scale = match (scl >> 4) & 0x03 {
             x if x == Scale::Dps250  as u8 => Scale::Dps250,
             x if x == Scale::Dps500  as u8 => Scale::Dps500,
             x if x == Scale::Dps2000 as u8 => Scale::Dps2000,
@@ -173,8 +173,8 @@ where
     /// This sets the sensitivity of the sensor, see `Scale` for more
     /// information
     pub fn set_scale(&mut self, scale: Scale) -> Result<&mut Self, E> {
-        let bits = (scale as u8) << 2;
-        let mask = 0b0000_1100;
+        let bits = (scale as u8) << 4;
+        let mask = 0b0011_0000;
         self.change_config(Register::CTRL_REG4, mask, bits)
     }
 
@@ -367,19 +367,19 @@ pub struct Measurements {
 pub struct Status {
     /// Overrun (data has overwritten previously unread data)
     /// has occurred on at least one axis
-    overrun: bool,
+    pub overrun: bool,
     /// Overrun occurred on Z-axis
-    z_overrun: bool,
+    pub z_overrun: bool,
     /// Overrun occurred on Y-axis
-    y_overrun: bool,
+    pub y_overrun: bool,
     /// Overrun occurred on X-axis
-    x_overrun: bool,
+    pub x_overrun: bool,
     /// New data is available for either X, Y, Z - axis
-    new_data: bool,
+    pub new_data: bool,
     /// New data is available on Z-axis
-    z_new: bool,
+    pub z_new: bool,
     /// New data is available on Y-axis
-    y_new: bool,
+    pub y_new: bool,
     /// New data is available on X-axis
-    x_new: bool,
+    pub x_new: bool,
 }
