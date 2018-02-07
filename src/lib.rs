@@ -86,6 +86,98 @@ where
         self.read_register(Register::WHO_AM_I)
     }
 
+    /// Read `STATUS_REG` of sensor
+    pub fn status(&mut self) -> Result<Status, E> {
+        let sts = self.read_register(Register::STATUS_REG)?;
+        Ok(
+            Status{
+                overrun:   (sts & 1 << 7) != 0,
+                z_overrun: (sts & 1 << 6) != 0,
+                y_overrun: (sts & 1 << 5) != 0,
+                x_overrun: (sts & 1 << 4) != 0,
+                new_data:  (sts & 1 << 3) != 0,
+                z_new:     (sts & 1 << 2) != 0,
+                y_new:     (sts & 1 << 1) != 0,
+                x_new:     (sts & 1 << 0) != 0,
+            })
+    }
+
+    /// Get the current Output Data Rate
+    pub fn odr(&mut self) -> Result<ODR, E> {
+        // Read control register
+        let reg1 = self.read_register(Register::CTRL_REG1)?;
+        // Extract ODR value, converting to enum (ROI: 0b1100_0000)
+        let odr = match (reg1 >> 6) & 0x03 {
+            x if x == ODR::Hz95  as u8 => ODR::Hz95,
+            x if x == ODR::Hz190 as u8 => ODR::Hz190,
+            x if x == ODR::Hz380 as u8 => ODR::Hz380,
+            x if x == ODR::Hz760 as u8 => ODR::Hz760,
+            _ => unreachable!(),
+        };
+        Ok(odr)
+    }
+
+    /// Set the Output Data Rate
+    pub fn set_odr(&mut self, odr: ODR) -> Result<&mut Self, E> {
+        // New configuration
+        let bits = (odr as u8) << 6;
+        // Mask to only affect ODR configuration
+        let mask = 0b1100_0000;
+        // Apply change
+        self.change_config(Register::CTRL_REG1, mask, bits)
+    }
+
+    /// Get current Bandwidth
+    pub fn bandwidth(&mut self) -> Result<Bandwidth, E> {
+        let reg1 = self.read_register(Register::CTRL_REG1)?;
+        // Shift and mask bandwidth of register, (ROI: 0b0011_0000)
+        let bw = match (reg1 >> 4) & 0x03 {
+            x if x == Bandwidth::Low     as u8 => Bandwidth::Low,
+            x if x == Bandwidth::Medium  as u8 => Bandwidth::Medium,
+            x if x == Bandwidth::High    as u8 => Bandwidth::High,
+            x if x == Bandwidth::Maximum as u8 => Bandwidth::Maximum,
+            _ => unreachable!(),
+        };
+        Ok(bw)
+    }
+
+    /// Set low-pass cut-off frequency (i.e. bandwidth)
+    ///
+    /// See `Bandwidth` for further explanation
+    pub fn set_bandwidth(&mut self, bw: Bandwidth) -> Result<&mut Self, E> {
+        let bits = (bw as u8) << 4;
+        let mask = 0b0011_0000;
+        self.change_config(Register::CTRL_REG1, mask, bits)
+    }
+
+    /// Get the current Full Scale Selection
+    ///
+    /// This is the sensitivity of the sensor, see `Scale` for more information
+    pub fn scale(&mut self) -> Result<Scale, E> {
+        let scl = self.read_register(Register::CTRL_REG4)?;
+        // Extract scale value from register, ensure that we mask with
+        // `0b0000_0011` to extract `FS1-FS2` part of register
+        let scale = match (scl >> 2) & 0x03 {
+            x if x == Scale::Dps250  as u8 => Scale::Dps250,
+            x if x == Scale::Dps500  as u8 => Scale::Dps500,
+            x if x == Scale::Dps2000 as u8 => Scale::Dps2000,
+            // Special case for Dps2000
+            0x02 => Scale::Dps2000,
+            _ => unreachable!(),
+        };
+        Ok(scale)
+    }
+
+    /// Set the Full Scale Selection
+    ///
+    /// This sets the sensitivity of the sensor, see `Scale` for more
+    /// information
+    pub fn set_scale(&mut self, scale: Scale) -> Result<&mut Self, E> {
+        let bits = (scale as u8) << 2;
+        let mask = 0b0000_1100;
+        self.change_config(Register::CTRL_REG4, mask, bits)
+    }
+
     fn read_register(&mut self, reg: Register) -> Result<u8, E> {
         self.cs.set_low();
 
@@ -129,6 +221,23 @@ where
 
         Ok(())
     }
+
+    /// Change configuration in register
+    ///
+    /// Helper function to update a particular part of a register without
+    /// affecting other parts of the register that might contain desired
+    /// configuration. This allows the `L3gd20` struct to be used like
+    /// a builder interface when configuring specific parameters.
+    fn change_config(&mut self, reg: Register, mask: u8, new_value: u8) -> Result<&mut Self, E> {
+        // Read current value of register
+        let current = self.read_register(reg)?;
+        // Use supplied mask so we don't affect more than necessary
+        let masked  = current & !mask;
+        // Use `or` to apply the new value without affecting other parts
+        let new_reg = masked | new_value;
+        self.write_register(reg, new_reg)?;
+        Ok(self)
+    }
 }
 
 #[allow(dead_code)]
@@ -163,6 +272,47 @@ enum Register {
     INT1_DURATION = 0x38,
 }
 
+/// Output Data Rate
+#[derive(Debug, Clone, Copy)]
+pub enum ODR {
+    /// 95 Hz data rate
+    Hz95  = 0x00,
+    /// 190 Hz data rate
+    Hz190 = 0x01,
+    /// 380 Hz data rate
+    Hz380 = 0x02,
+    /// 760 Hz data rate
+    Hz760 = 0x03,
+}
+
+/// Full scale selection
+#[derive(Debug, Clone, Copy)]
+pub enum Scale {
+    /// 250 Degrees Per Second
+    Dps250  = 0x00,
+    /// 500 Degrees Per Second
+    Dps500  = 0x01,
+    /// 2000 Degrees Per Second
+    Dps2000 = 0x03,
+}
+
+/// Bandwidth of sensor
+///
+/// The bandwidth of the sensor is equal to the cut-off for the low-pass
+/// filter. The cut-off depends on the `ODR` of the sensor, for specific
+/// information consult the data sheet.
+#[derive(Debug, Clone, Copy)]
+pub enum Bandwidth {
+    /// Lowest possible cut-off for any `ODR` configuration
+    Low     = 0x00,
+    /// Medium cut-off, can be the same as `High` for some `ODR` configurations
+    Medium  = 0x01,
+    /// High cut-off
+    High    = 0x02,
+    /// Maximum cut-off for any `ODR` configuration
+    Maximum = 0x03,
+}
+
 const READ: u8 = 1 << 7;
 const WRITE: u8 = 0 << 7;
 const MULTI: u8 = 1 << 6;
@@ -171,6 +321,24 @@ const SINGLE: u8 = 0 << 6;
 impl Register {
     fn addr(self) -> u8 {
         self as u8
+    }
+}
+
+impl Scale {
+    /// Convert a measurement to degrees
+    pub fn degrees(&self, val: i16) -> f32 {
+        match *self {
+            Scale::Dps250  => val as f32 * 0.00875,
+            Scale::Dps500  => val as f32 * 0.0175,
+            Scale::Dps2000 => val as f32 * 0.07,
+        }
+    }
+
+    /// Convert a measurement to radians
+    pub fn radians(&self, val: i16) -> f32 {
+        // TODO: Use `to_radians` or other built in method
+        // NOTE: `to_radians` is only exported in `std` (07.02.18)
+        self.degrees(val) * (core::f32::consts::PI / 180.0)
     }
 }
 
@@ -192,4 +360,26 @@ pub struct Measurements {
     pub gyro: I16x3,
     /// Temperature sensor measurement
     pub temp: i8,
+}
+
+/// Sensor status
+#[derive(Debug, Clone, Copy)]
+pub struct Status {
+    /// Overrun (data has overwritten previously unread data)
+    /// has occurred on at least one axis
+    overrun: bool,
+    /// Overrun occurred on Z-axis
+    z_overrun: bool,
+    /// Overrun occurred on Y-axis
+    y_overrun: bool,
+    /// Overrun occurred on X-axis
+    x_overrun: bool,
+    /// New data is available for either X, Y, Z - axis
+    new_data: bool,
+    /// New data is available on Z-axis
+    z_new: bool,
+    /// New data is available on Y-axis
+    y_new: bool,
+    /// New data is available on X-axis
+    x_new: bool,
 }
