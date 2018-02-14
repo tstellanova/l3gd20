@@ -103,22 +103,22 @@ where
     }
 
     /// Get the current Output Data Rate
-    pub fn odr(&mut self) -> Result<ODR, E> {
+    pub fn odr(&mut self) -> Result<Odr, E> {
         // Read control register
         let reg1 = self.read_register(Register::CTRL_REG1)?;
         // Extract ODR value, converting to enum (ROI: 0b1100_0000)
         let odr = match (reg1 >> 6) & 0x03 {
-            x if x == ODR::Hz95  as u8 => ODR::Hz95,
-            x if x == ODR::Hz190 as u8 => ODR::Hz190,
-            x if x == ODR::Hz380 as u8 => ODR::Hz380,
-            x if x == ODR::Hz760 as u8 => ODR::Hz760,
+            x if x == Odr::Hz95  as u8 => Odr::Hz95,
+            x if x == Odr::Hz190 as u8 => Odr::Hz190,
+            x if x == Odr::Hz380 as u8 => Odr::Hz380,
+            x if x == Odr::Hz760 as u8 => Odr::Hz760,
             _ => unreachable!(),
         };
         Ok(odr)
     }
 
     /// Set the Output Data Rate
-    pub fn set_odr(&mut self, odr: ODR) -> Result<&mut Self, E> {
+    pub fn set_odr(&mut self, odr: Odr) -> Result<&mut Self, E> {
         // New configuration
         let bits = (odr as u8) << 6;
         // Mask to only affect ODR configuration
@@ -274,7 +274,7 @@ enum Register {
 
 /// Output Data Rate
 #[derive(Debug, Clone, Copy)]
-pub enum ODR {
+pub enum Odr {
     /// 95 Hz data rate
     Hz95  = 0x00,
     /// 190 Hz data rate
@@ -299,17 +299,17 @@ pub enum Scale {
 /// Bandwidth of sensor
 ///
 /// The bandwidth of the sensor is equal to the cut-off for the low-pass
-/// filter. The cut-off depends on the `ODR` of the sensor, for specific
+/// filter. The cut-off depends on the `Odr` of the sensor, for specific
 /// information consult the data sheet.
 #[derive(Debug, Clone, Copy)]
 pub enum Bandwidth {
-    /// Lowest possible cut-off for any `ODR` configuration
+    /// Lowest possible cut-off for any `Odr` configuration
     Low     = 0x00,
-    /// Medium cut-off, can be the same as `High` for some `ODR` configurations
+    /// Medium cut-off, can be the same as `High` for some `Odr` configurations
     Medium  = 0x01,
     /// High cut-off
     High    = 0x02,
-    /// Maximum cut-off for any `ODR` configuration
+    /// Maximum cut-off for any `Odr` configuration
     Maximum = 0x03,
 }
 
