@@ -89,32 +89,14 @@ where
     /// Read `STATUS_REG` of sensor
     pub fn status(&mut self) -> Result<Status, E> {
         let sts = self.read_register(Register::STATUS_REG)?;
-        Ok(
-            Status{
-                overrun:   (sts & 1 << 7) != 0,
-                z_overrun: (sts & 1 << 6) != 0,
-                y_overrun: (sts & 1 << 5) != 0,
-                x_overrun: (sts & 1 << 4) != 0,
-                new_data:  (sts & 1 << 3) != 0,
-                z_new:     (sts & 1 << 2) != 0,
-                y_new:     (sts & 1 << 1) != 0,
-                x_new:     (sts & 1 << 0) != 0,
-            })
+        Ok(Status::from_u8(sts))
     }
 
     /// Get the current Output Data Rate
     pub fn odr(&mut self) -> Result<Odr, E> {
         // Read control register
         let reg1 = self.read_register(Register::CTRL_REG1)?;
-        // Extract ODR value, converting to enum (ROI: 0b1100_0000)
-        let odr = match (reg1 >> 6) & 0x03 {
-            x if x == Odr::Hz95  as u8 => Odr::Hz95,
-            x if x == Odr::Hz190 as u8 => Odr::Hz190,
-            x if x == Odr::Hz380 as u8 => Odr::Hz380,
-            x if x == Odr::Hz760 as u8 => Odr::Hz760,
-            _ => unreachable!(),
-        };
-        Ok(odr)
+        Ok(Odr::from_u8(reg1))
     }
 
     /// Set the Output Data Rate
@@ -130,15 +112,7 @@ where
     /// Get current Bandwidth
     pub fn bandwidth(&mut self) -> Result<Bandwidth, E> {
         let reg1 = self.read_register(Register::CTRL_REG1)?;
-        // Shift and mask bandwidth of register, (ROI: 0b0011_0000)
-        let bw = match (reg1 >> 4) & 0x03 {
-            x if x == Bandwidth::Low     as u8 => Bandwidth::Low,
-            x if x == Bandwidth::Medium  as u8 => Bandwidth::Medium,
-            x if x == Bandwidth::High    as u8 => Bandwidth::High,
-            x if x == Bandwidth::Maximum as u8 => Bandwidth::Maximum,
-            _ => unreachable!(),
-        };
-        Ok(bw)
+        Ok(Bandwidth::from_u8(reg1))
     }
 
     /// Set low-pass cut-off frequency (i.e. bandwidth)
@@ -155,17 +129,7 @@ where
     /// This is the sensitivity of the sensor, see `Scale` for more information
     pub fn scale(&mut self) -> Result<Scale, E> {
         let scl = self.read_register(Register::CTRL_REG4)?;
-        // Extract scale value from register, ensure that we mask with
-        // `0b0000_0011` to extract `FS1-FS2` part of register
-        let scale = match (scl >> 4) & 0x03 {
-            x if x == Scale::Dps250  as u8 => Scale::Dps250,
-            x if x == Scale::Dps500  as u8 => Scale::Dps500,
-            x if x == Scale::Dps2000 as u8 => Scale::Dps2000,
-            // Special case for Dps2000
-            0x02 => Scale::Dps2000,
-            _ => unreachable!(),
-        };
-        Ok(scale)
+        Ok(Scale::from_u8(scl))
     }
 
     /// Set the Full Scale Selection
@@ -285,6 +249,19 @@ pub enum Odr {
     Hz760 = 0x03,
 }
 
+impl Odr {
+    fn from_u8(from: u8) -> Self {
+        // Extract ODR value, converting to enum (ROI: 0b1100_0000)
+        match (from >> 6) & 0x03 {
+            x if x == Odr::Hz95  as u8 => Odr::Hz95,
+            x if x == Odr::Hz190 as u8 => Odr::Hz190,
+            x if x == Odr::Hz380 as u8 => Odr::Hz380,
+            x if x == Odr::Hz760 as u8 => Odr::Hz760,
+            _ => unreachable!(),
+        }
+    }
+}
+
 /// Full scale selection
 #[derive(Debug, Clone, Copy)]
 pub enum Scale {
@@ -294,6 +271,21 @@ pub enum Scale {
     Dps500  = 0x01,
     /// 2000 Degrees Per Second
     Dps2000 = 0x03,
+}
+
+impl Scale {
+    fn from_u8(from: u8) -> Self {
+        // Extract scale value from register, ensure that we mask with
+        // `0b0000_0011` to extract `FS1-FS2` part of register
+        match (from >> 4) & 0x03 {
+            x if x == Scale::Dps250  as u8 => Scale::Dps250,
+            x if x == Scale::Dps500  as u8 => Scale::Dps500,
+            x if x == Scale::Dps2000 as u8 => Scale::Dps2000,
+            // Special case for Dps2000
+            0x02 => Scale::Dps2000,
+            _ => unreachable!(),
+        }
+    }
 }
 
 /// Bandwidth of sensor
@@ -311,6 +303,19 @@ pub enum Bandwidth {
     High    = 0x02,
     /// Maximum cut-off for any `Odr` configuration
     Maximum = 0x03,
+}
+
+impl Bandwidth {
+    fn from_u8(from: u8) -> Self {
+        // Shift and mask bandwidth of register, (ROI: 0b0011_0000)
+        match (from >> 4) & 0x03 {
+            x if x == Bandwidth::Low     as u8 => Bandwidth::Low,
+            x if x == Bandwidth::Medium  as u8 => Bandwidth::Medium,
+            x if x == Bandwidth::High    as u8 => Bandwidth::High,
+            x if x == Bandwidth::Maximum as u8 => Bandwidth::Maximum,
+            _ => unreachable!(),
+        }
+    }
 }
 
 const READ: u8 = 1 << 7;
@@ -382,4 +387,19 @@ pub struct Status {
     pub y_new: bool,
     /// New data is available on X-axis
     pub x_new: bool,
+}
+
+impl Status {
+    fn from_u8(from: u8) -> Self {
+        Status{
+            overrun:   (from & 1 << 7) != 0,
+            z_overrun: (from & 1 << 6) != 0,
+            y_overrun: (from & 1 << 5) != 0,
+            x_overrun: (from & 1 << 4) != 0,
+            new_data:  (from & 1 << 3) != 0,
+            z_new:     (from & 1 << 2) != 0,
+            y_new:     (from & 1 << 1) != 0,
+            x_new:     (from & 1 << 0) != 0,
+        }
+    }
 }
