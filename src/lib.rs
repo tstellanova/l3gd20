@@ -101,12 +101,7 @@ where
 
     /// Set the Output Data Rate
     pub fn set_odr(&mut self, odr: Odr) -> Result<&mut Self, E> {
-        // New configuration
-        let bits = (odr as u8) << 6;
-        // Mask to only affect ODR configuration
-        let mask = 0b1100_0000;
-        // Apply change
-        self.change_config(Register::CTRL_REG1, mask, bits)
+        self.change_config(Register::CTRL_REG1, odr)
     }
 
     /// Get current Bandwidth
@@ -119,9 +114,7 @@ where
     ///
     /// See `Bandwidth` for further explanation
     pub fn set_bandwidth(&mut self, bw: Bandwidth) -> Result<&mut Self, E> {
-        let bits = (bw as u8) << 4;
-        let mask = 0b0011_0000;
-        self.change_config(Register::CTRL_REG1, mask, bits)
+        self.change_config(Register::CTRL_REG1, bw)
     }
 
     /// Get the current Full Scale Selection
@@ -137,9 +130,7 @@ where
     /// This sets the sensitivity of the sensor, see `Scale` for more
     /// information
     pub fn set_scale(&mut self, scale: Scale) -> Result<&mut Self, E> {
-        let bits = (scale as u8) << 4;
-        let mask = 0b0011_0000;
-        self.change_config(Register::CTRL_REG4, mask, bits)
+        self.change_config(Register::CTRL_REG4, scale)
     }
 
     fn read_register(&mut self, reg: Register) -> Result<u8, E> {
@@ -192,16 +183,37 @@ where
     /// affecting other parts of the register that might contain desired
     /// configuration. This allows the `L3gd20` struct to be used like
     /// a builder interface when configuring specific parameters.
-    fn change_config(&mut self, reg: Register, mask: u8, new_value: u8) -> Result<&mut Self, E> {
+    fn change_config<B: BitValue>(&mut self, reg: Register, bits: B) -> Result<&mut Self, E> {
+        // Create bit mask from width and shift of value
+        let mask = B::width() << B::shift();
+        // Extract the value as u8
+        let bits = (bits.value() << B::shift()) & mask;
         // Read current value of register
         let current = self.read_register(reg)?;
         // Use supplied mask so we don't affect more than necessary
         let masked  = current & !mask;
         // Use `or` to apply the new value without affecting other parts
-        let new_reg = masked | new_value;
+        let new_reg = masked | bits;
         self.write_register(reg, new_reg)?;
         Ok(self)
     }
+}
+
+/// Trait to represent a value that can be sent to sensor
+trait BitValue {
+    /// The bit 'mask' of the value
+    ///
+    /// Most sensor parameters are controlled by a few bits that are changed to
+    /// configure the associated parameter. The width represents the bit mask
+    /// to be changed without any shifting.
+    fn width() -> u8;
+    /// The number of bits to shift the mask by
+    fn shift() -> u8;
+    /// Convert the type to a byte value to be sent to sensor
+    ///
+    /// # Note
+    /// This value should not be bit shifted.
+    fn value(&self) -> u8;
 }
 
 #[allow(dead_code)]
@@ -249,10 +261,16 @@ pub enum Odr {
     Hz760 = 0x03,
 }
 
+impl BitValue for Odr {
+    fn width() -> u8 {0x03}
+    fn shift() -> u8 {6}
+    fn value(&self) -> u8 {*self as u8}
+}
+
 impl Odr {
     fn from_u8(from: u8) -> Self {
         // Extract ODR value, converting to enum (ROI: 0b1100_0000)
-        match (from >> 6) & 0x03 {
+        match (from >> Odr::shift()) & Odr::width() {
             x if x == Odr::Hz95  as u8 => Odr::Hz95,
             x if x == Odr::Hz190 as u8 => Odr::Hz190,
             x if x == Odr::Hz380 as u8 => Odr::Hz380,
@@ -273,11 +291,17 @@ pub enum Scale {
     Dps2000 = 0x03,
 }
 
+impl BitValue for Scale {
+    fn width() -> u8 {0x03}
+    fn shift() -> u8 {4}
+    fn value(&self) -> u8 {*self as u8}
+}
+
 impl Scale {
     fn from_u8(from: u8) -> Self {
         // Extract scale value from register, ensure that we mask with
         // `0b0000_0011` to extract `FS1-FS2` part of register
-        match (from >> 4) & 0x03 {
+        match (from >> Scale::shift()) & Scale::width() {
             x if x == Scale::Dps250  as u8 => Scale::Dps250,
             x if x == Scale::Dps500  as u8 => Scale::Dps500,
             x if x == Scale::Dps2000 as u8 => Scale::Dps2000,
@@ -305,10 +329,16 @@ pub enum Bandwidth {
     Maximum = 0x03,
 }
 
+impl BitValue for Bandwidth {
+    fn width() -> u8 {0x03}
+    fn shift() -> u8 {4}
+    fn value(&self) -> u8 {*self as u8}
+}
+
 impl Bandwidth {
     fn from_u8(from: u8) -> Self {
         // Shift and mask bandwidth of register, (ROI: 0b0011_0000)
-        match (from >> 4) & 0x03 {
+        match (from >> Bandwidth::shift()) & Bandwidth::width() {
             x if x == Bandwidth::Low     as u8 => Bandwidth::Low,
             x if x == Bandwidth::Medium  as u8 => Bandwidth::Medium,
             x if x == Bandwidth::High    as u8 => Bandwidth::High,
