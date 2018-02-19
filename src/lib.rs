@@ -162,11 +162,7 @@ where
         Ok(buffer)
     }
 
-    fn write_register(
-        &mut self,
-        reg: Register,
-        byte: u8,
-    ) -> Result<(), E> {
+    fn write_register(&mut self, reg: Register, byte: u8) -> Result<(), E> {
         self.cs.set_low();
 
         let buffer = [reg.addr() | SINGLE | WRITE, byte];
@@ -185,13 +181,13 @@ where
     /// a builder interface when configuring specific parameters.
     fn change_config<B: BitValue>(&mut self, reg: Register, bits: B) -> Result<&mut Self, E> {
         // Create bit mask from width and shift of value
-        let mask = B::width() << B::shift();
+        let mask = B::mask() << B::shift();
         // Extract the value as u8
         let bits = (bits.value() << B::shift()) & mask;
         // Read current value of register
         let current = self.read_register(reg)?;
         // Use supplied mask so we don't affect more than necessary
-        let masked  = current & !mask;
+        let masked = current & !mask;
         // Use `or` to apply the new value without affecting other parts
         let new_reg = masked | bits;
         self.write_register(reg, new_reg)?;
@@ -201,12 +197,12 @@ where
 
 /// Trait to represent a value that can be sent to sensor
 trait BitValue {
-    /// The bit 'mask' of the value
-    ///
-    /// Most sensor parameters are controlled by a few bits that are changed to
-    /// configure the associated parameter. The width represents the bit mask
-    /// to be changed without any shifting.
+    /// The width of the bitfield in bits
     fn width() -> u8;
+    /// The bit 'mask' of the value
+    fn mask() -> u8 {
+        (1 << Self::width()) - 1
+    }
     /// The number of bits to shift the mask by
     fn shift() -> u8;
     /// Convert the type to a byte value to be sent to sensor
@@ -252,7 +248,7 @@ enum Register {
 #[derive(Debug, Clone, Copy)]
 pub enum Odr {
     /// 95 Hz data rate
-    Hz95  = 0x00,
+    Hz95 = 0x00,
     /// 190 Hz data rate
     Hz190 = 0x01,
     /// 380 Hz data rate
@@ -262,16 +258,22 @@ pub enum Odr {
 }
 
 impl BitValue for Odr {
-    fn width() -> u8 {0x03}
-    fn shift() -> u8 {6}
-    fn value(&self) -> u8 {*self as u8}
+    fn width() -> u8 {
+        2
+    }
+    fn shift() -> u8 {
+        6
+    }
+    fn value(&self) -> u8 {
+        *self as u8
+    }
 }
 
 impl Odr {
     fn from_u8(from: u8) -> Self {
         // Extract ODR value, converting to enum (ROI: 0b1100_0000)
-        match (from >> Odr::shift()) & Odr::width() {
-            x if x == Odr::Hz95  as u8 => Odr::Hz95,
+        match (from >> Odr::shift()) & Odr::mask() {
+            x if x == Odr::Hz95 as u8 => Odr::Hz95,
             x if x == Odr::Hz190 as u8 => Odr::Hz190,
             x if x == Odr::Hz380 as u8 => Odr::Hz380,
             x if x == Odr::Hz760 as u8 => Odr::Hz760,
@@ -284,26 +286,32 @@ impl Odr {
 #[derive(Debug, Clone, Copy)]
 pub enum Scale {
     /// 250 Degrees Per Second
-    Dps250  = 0x00,
+    Dps250 = 0x00,
     /// 500 Degrees Per Second
-    Dps500  = 0x01,
+    Dps500 = 0x01,
     /// 2000 Degrees Per Second
     Dps2000 = 0x03,
 }
 
 impl BitValue for Scale {
-    fn width() -> u8 {0x03}
-    fn shift() -> u8 {4}
-    fn value(&self) -> u8 {*self as u8}
+    fn width() -> u8 {
+        2
+    }
+    fn shift() -> u8 {
+        4
+    }
+    fn value(&self) -> u8 {
+        *self as u8
+    }
 }
 
 impl Scale {
     fn from_u8(from: u8) -> Self {
         // Extract scale value from register, ensure that we mask with
         // `0b0000_0011` to extract `FS1-FS2` part of register
-        match (from >> Scale::shift()) & Scale::width() {
-            x if x == Scale::Dps250  as u8 => Scale::Dps250,
-            x if x == Scale::Dps500  as u8 => Scale::Dps500,
+        match (from >> Scale::shift()) & Scale::mask() {
+            x if x == Scale::Dps250 as u8 => Scale::Dps250,
+            x if x == Scale::Dps500 as u8 => Scale::Dps500,
             x if x == Scale::Dps2000 as u8 => Scale::Dps2000,
             // Special case for Dps2000
             0x02 => Scale::Dps2000,
@@ -320,28 +328,34 @@ impl Scale {
 #[derive(Debug, Clone, Copy)]
 pub enum Bandwidth {
     /// Lowest possible cut-off for any `Odr` configuration
-    Low     = 0x00,
+    Low = 0x00,
     /// Medium cut-off, can be the same as `High` for some `Odr` configurations
-    Medium  = 0x01,
+    Medium = 0x01,
     /// High cut-off
-    High    = 0x02,
+    High = 0x02,
     /// Maximum cut-off for any `Odr` configuration
     Maximum = 0x03,
 }
 
 impl BitValue for Bandwidth {
-    fn width() -> u8 {0x03}
-    fn shift() -> u8 {4}
-    fn value(&self) -> u8 {*self as u8}
+    fn width() -> u8 {
+        2
+    }
+    fn shift() -> u8 {
+        4
+    }
+    fn value(&self) -> u8 {
+        *self as u8
+    }
 }
 
 impl Bandwidth {
     fn from_u8(from: u8) -> Self {
         // Shift and mask bandwidth of register, (ROI: 0b0011_0000)
-        match (from >> Bandwidth::shift()) & Bandwidth::width() {
-            x if x == Bandwidth::Low     as u8 => Bandwidth::Low,
-            x if x == Bandwidth::Medium  as u8 => Bandwidth::Medium,
-            x if x == Bandwidth::High    as u8 => Bandwidth::High,
+        match (from >> Bandwidth::shift()) & Bandwidth::mask() {
+            x if x == Bandwidth::Low as u8 => Bandwidth::Low,
+            x if x == Bandwidth::Medium as u8 => Bandwidth::Medium,
+            x if x == Bandwidth::High as u8 => Bandwidth::High,
             x if x == Bandwidth::Maximum as u8 => Bandwidth::Maximum,
             _ => unreachable!(),
         }
@@ -363,8 +377,8 @@ impl Scale {
     /// Convert a measurement to degrees
     pub fn degrees(&self, val: i16) -> f32 {
         match *self {
-            Scale::Dps250  => val as f32 * 0.00875,
-            Scale::Dps500  => val as f32 * 0.0175,
+            Scale::Dps250 => val as f32 * 0.00875,
+            Scale::Dps500 => val as f32 * 0.0175,
             Scale::Dps2000 => val as f32 * 0.07,
         }
     }
@@ -421,15 +435,15 @@ pub struct Status {
 
 impl Status {
     fn from_u8(from: u8) -> Self {
-        Status{
-            overrun:   (from & 1 << 7) != 0,
+        Status {
+            overrun: (from & 1 << 7) != 0,
             z_overrun: (from & 1 << 6) != 0,
             y_overrun: (from & 1 << 5) != 0,
             x_overrun: (from & 1 << 4) != 0,
-            new_data:  (from & 1 << 3) != 0,
-            z_new:     (from & 1 << 2) != 0,
-            y_new:     (from & 1 << 1) != 0,
-            x_new:     (from & 1 << 0) != 0,
+            new_data: (from & 1 << 3) != 0,
+            z_new: (from & 1 << 2) != 0,
+            y_new: (from & 1 << 1) != 0,
+            x_new: (from & 1 << 0) != 0,
         }
     }
 }
