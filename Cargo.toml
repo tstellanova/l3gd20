@@ -7,7 +7,9 @@ keywords = ["embedded-hal-driver", "gyroscope", "MEMS"]
 license = "MIT OR Apache-2.0"
 name = "l3gd20"
 repository = "https://github.com/japaric/l3gd20"
-version = "0.1.2"
+version = "0.2.0"
 
 [dependencies]
-embedded-hal = "0.1.0"
+# embedded-hal = "0.2.0"
+embedded-hal = { git = "https://github.com/japaric/embedded-hal" }
+generic-array = "0.11.0"
