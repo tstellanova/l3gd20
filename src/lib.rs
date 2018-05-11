@@ -2,27 +2,28 @@
 //!
 //! This driver was built using [`embedded-hal`] traits.
 //!
-//! [`embedded-hal`]: https://docs.rs/embedded-hal/~0.1
+//! [`embedded-hal`]: https://docs.rs/embedded-hal/0.2
 //!
 //! # Examples
 //!
 //! You should find at least one example in the [f3] crate.
 //!
-//! [f3]: https://docs.rs/f3/~0.5
+//! [f3]: https://docs.rs/f3/0.6
 
 #![deny(missing_docs)]
 #![deny(warnings)]
-#![feature(unsize)]
 #![no_std]
 
 extern crate embedded_hal as hal;
+extern crate generic_array;
 
-use core::marker::Unsize;
 use core::mem;
 
+use generic_array::typenum::consts::*;
+use generic_array::{ArrayLength, GenericArray};
 use hal::blocking::spi::{Transfer, Write};
-use hal::spi::{Mode, Phase, Polarity};
 use hal::digital::OutputPin;
+use hal::spi::{Mode, Phase, Polarity};
 
 /// SPI mode
 pub const MODE: Mode = Mode {
@@ -53,7 +54,7 @@ where
 
     /// Temperature measurement + gyroscope measurements
     pub fn all(&mut self) -> Result<Measurements, E> {
-        let bytes: [u8; 9] = self.read_registers(Register::OUT_TEMP)?;
+        let bytes: GenericArray<u8, U9> = self.read_registers(Register::OUT_TEMP)?;
 
         Ok(Measurements {
             gyro: I16x3 {
@@ -67,7 +68,7 @@ where
 
     /// Gyroscope measurements
     pub fn gyro(&mut self) -> Result<I16x3, E> {
-        let bytes: [u8; 7] = self.read_registers(Register::OUT_X_L)?;
+        let bytes: GenericArray<u8, U7> = self.read_registers(Register::OUT_X_L)?;
 
         Ok(I16x3 {
             x: (bytes[1] as u16 + ((bytes[2] as u16) << 8)) as i16,
@@ -144,13 +145,13 @@ where
         Ok(buffer[1])
     }
 
-    fn read_registers<B>(&mut self, reg: Register) -> Result<B, E>
+    fn read_registers<N>(&mut self, reg: Register) -> Result<GenericArray<u8, N>, E>
     where
-        B: Unsize<[u8]>,
+        N: ArrayLength<u8>,
     {
         self.cs.set_low();
 
-        let mut buffer: B = unsafe { mem::uninitialized() };
+        let mut buffer: GenericArray<u8, N> = unsafe { mem::uninitialized() };
         {
             let slice: &mut [u8] = &mut buffer;
             slice[0] = reg.addr() | MULTI | READ;
