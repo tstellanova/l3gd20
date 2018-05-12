@@ -10,6 +10,5 @@ repository = "https://github.com/japaric/l3gd20"
 version = "0.2.0"
 
 [dependencies]
-# embedded-hal = "0.2.0"
-embedded-hal = { git = "https://github.com/japaric/embedded-hal" }
+embedded-hal = "0.2.0"
 generic-array = "0.11.0"

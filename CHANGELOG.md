@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- [breaking-change] moved to v0.2.0 of the `embedded-hal` traits
+- [breaking-change] moved to v0.2.0 of the `embedded-hal` traits. This crate now compiler on beta
+  and stable.
 
 ## [v0.1.2] - 2018-02-19
 
