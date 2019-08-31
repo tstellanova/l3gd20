@@ -14,15 +14,16 @@
 #![deny(warnings)]
 #![no_std]
 
-extern crate embedded_hal as hal;
 extern crate generic_array;
+use generic_array::{typenum::consts::*,
+                    ArrayLength, 
+                    GenericArray};
 
-use core::mem;
+use core::{mem};
 
-use generic_array::typenum::consts::*;
-use generic_array::{ArrayLength, GenericArray};
+extern crate embedded_hal as hal;
 use hal::blocking::spi::{Transfer, Write};
-use hal::digital::OutputPin;
+use hal::digital::v2::OutputPin;
 use hal::spi::{Mode, Phase, Polarity};
 
 /// SPI mode
@@ -135,41 +136,45 @@ where
     }
 
     fn read_register(&mut self, reg: Register) -> Result<u8, E> {
-        self.cs.set_low();
+        
+        self.cs.set_low().ok();
+
 
         let mut buffer = [reg.addr() | SINGLE | READ, 0];
         self.spi.transfer(&mut buffer)?;
 
-        self.cs.set_high();
+        self.cs.set_high().ok();
 
         Ok(buffer[1])
     }
+
 
     fn read_registers<N>(&mut self, reg: Register) -> Result<GenericArray<u8, N>, E>
     where
         N: ArrayLength<u8>,
     {
-        self.cs.set_low();
 
-        let mut buffer: GenericArray<u8, N> = unsafe { mem::uninitialized() };
+        self.cs.set_low().ok();
+
+        let mut buffer: GenericArray<u8, N> = unsafe { mem::MaybeUninit::uninit().assume_init() };
         {
             let slice: &mut [u8] = &mut buffer;
             slice[0] = reg.addr() | MULTI | READ;
             self.spi.transfer(slice)?;
         }
 
-        self.cs.set_high();
+        self.cs.set_high().ok();
 
         Ok(buffer)
     }
 
     fn write_register(&mut self, reg: Register, byte: u8) -> Result<(), E> {
-        self.cs.set_low();
+       self.cs.set_low().ok();
 
         let buffer = [reg.addr() | SINGLE | WRITE, byte];
         self.spi.write(&buffer)?;
 
-        self.cs.set_high();
+        self.cs.set_high().ok();
 
         Ok(())
     }
