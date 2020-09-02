@@ -14,22 +14,15 @@
 #![deny(warnings)]
 #![no_std]
 
-extern crate embedded_hal as hal;
-extern crate generic_array;
 
-use core::mem;
 
-use generic_array::typenum::consts::*;
-use generic_array::{ArrayLength, GenericArray};
-use hal::blocking::spi::{Transfer, Write};
-use hal::digital::OutputPin;
-use hal::spi::{Mode, Phase, Polarity};
+use embedded_hal::blocking::spi::{Transfer, Write};
+use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::spi::{Mode};
 
 /// SPI mode
-pub const MODE: Mode = Mode {
-    phase: Phase::CaptureOnSecondTransition,
-    polarity: Polarity::IdleHigh,
-};
+pub const MODE: Mode = embedded_hal::spi::MODE_3;
+
 
 /// L3GD20 driver
 pub struct L3gd20<SPI, CS> {
@@ -54,7 +47,8 @@ where
 
     /// Temperature measurement + gyroscope measurements
     pub fn all(&mut self) -> Result<Measurements, E> {
-        let bytes: GenericArray<u8, U9> = self.read_registers(Register::OUT_TEMP)?;
+        let mut bytes = [0u8; 9];
+        self.read_many(Register::OUT_TEMP, &mut bytes)?;
 
         Ok(Measurements {
             gyro: I16x3 {
@@ -68,7 +62,8 @@ where
 
     /// Gyroscope measurements
     pub fn gyro(&mut self) -> Result<I16x3, E> {
-        let bytes: GenericArray<u8, U7> = self.read_registers(Register::OUT_X_L)?;
+        let mut bytes = [0u8; 7];
+        self.read_many(Register::OUT_X_L, &mut bytes)?;
 
         Ok(I16x3 {
             x: (bytes[1] as u16 + ((bytes[2] as u16) << 8)) as i16,
@@ -135,41 +130,38 @@ where
     }
 
     fn read_register(&mut self, reg: Register) -> Result<u8, E> {
-        self.cs.set_low();
+        let _ = self.cs.set_low();
 
         let mut buffer = [reg.addr() | SINGLE | READ, 0];
         self.spi.transfer(&mut buffer)?;
 
-        self.cs.set_high();
+        let _ = self.cs.set_high();
 
         Ok(buffer[1])
     }
 
-    fn read_registers<N>(&mut self, reg: Register) -> Result<GenericArray<u8, N>, E>
-    where
-        N: ArrayLength<u8>,
-    {
-        self.cs.set_low();
+    /// Read multiple bytes starting from the `start_reg` register.
+    /// This function will attempt to fill the provided buffer.
+    fn read_many(&mut self,
+                 start_reg: Register,
+                 buffer: &mut [u8])
+                 -> Result<(), E> {
+        let _ = self.cs.set_low();
+        buffer[0] = start_reg.addr() | MULTI | READ ;
+        self.spi.transfer(buffer)?;
+        let _ = self.cs.set_high();
 
-        let mut buffer: GenericArray<u8, N> = unsafe { mem::uninitialized() };
-        {
-            let slice: &mut [u8] = &mut buffer;
-            slice[0] = reg.addr() | MULTI | READ;
-            self.spi.transfer(slice)?;
-        }
-
-        self.cs.set_high();
-
-        Ok(buffer)
+        Ok(())
     }
 
+
     fn write_register(&mut self, reg: Register, byte: u8) -> Result<(), E> {
-        self.cs.set_low();
+        let _ = self.cs.set_low();
 
         let buffer = [reg.addr() | SINGLE | WRITE, byte];
         self.spi.write(&buffer)?;
 
-        self.cs.set_high();
+        let _ = self.cs.set_high();
 
         Ok(())
     }
@@ -244,6 +236,8 @@ enum Register {
     INT1_TSH_ZL = 0x37,
     INT1_DURATION = 0x38,
 }
+
+
 
 /// Output Data Rate
 #[derive(Debug, Clone, Copy)]
