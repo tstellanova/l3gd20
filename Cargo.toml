@@ -1,5 +1,6 @@
 [package]
 authors = ["Jorge Aparicio <jorge@japaric.io>"]
+edition = "2018"
 categories = ["embedded", "hardware-support", "no-std"]
 description = "A platform agnostic driver to interface the L3GD20 (gyroscope)"
 documentation = "https://docs.rs/l3gd20"
@@ -7,8 +8,7 @@ keywords = ["embedded-hal-driver", "gyroscope", "MEMS"]
 license = "MIT OR Apache-2.0"
 name = "l3gd20"
 repository = "https://github.com/japaric/l3gd20"
-version = "0.2.0"
+version = "0.3.0"
 
 [dependencies]
-embedded-hal = "0.2.0"
-generic-array = "0.11.0"
+embedded-hal = "0.2.4"
