@@ -1,6 +1,6 @@
 # `l3gd20`
 
-> A platform agnostic driver to interface with the L3GD20 (gyroscope)
+> A platform agnostic driver to interface with the L3GD20 and L3GD20H (gyroscope)
 
 ## What works
 
@@ -9,8 +9,8 @@
 
 ## TODO
 
+- [ ] I2C support
 - [ ] Make sure this works with the `spidev` crate (i.e. with the Raspberry Pi)
-- [ ] Configuration. e.g. selecting the gyroscope sensing range / sensitivity.
 - [ ] How to make the API compatible with device specific features like DMA and interrupts?
 - ???
 

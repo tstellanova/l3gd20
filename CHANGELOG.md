@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped `embedded-hal` to v1.0
+- Bumped Rust edition to 2021
+- Rename `temp` field in `Measurement` to `temp_raw` to make it explicit this is not an actual valid temperature
+- Rename `temp` getter to `temp_raw` and add `temp_celcius` getter
+
+### Added
+
+- Add `temp_celcius` getter for `Measurement`
+- Add optional `defmt` support
+
+## [v0.3.0] - 2020-09-06
+
 ## [v0.2.0] - 2018-05-12
 
 ### Changed
@@ -34,7 +48,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Initial release
 
-[Unreleased]: https://github.com/japaric/l3gd20/compare/v0.2.0...HEAD
-[v0.2.0]: https://github.com/japaric/l3gd20/compare/v0.1.2...v0.2.0
-[v0.1.2]: https://github.com/japaric/l3gd20/compare/v0.1.1...v0.1.2
-[v0.1.1]: https://github.com/japaric/l3gd20/compare/v0.1.0...v0.1.1
+[Unreleased]: https://github.com/tstellanova/l3gd20/compare/v0.3.0...HEAD
+[v0.3.0]: https://github.com/tstellanova/l3gd20/compare/v0.2.0...v0.3.0
+[v0.2.0]: https://github.com/tstellanova/l3gd20/compare/v0.1.2...v0.2.0
+[v0.1.2]: https://github.com/tstellanova/l3gd20/compare/v0.1.1...v0.1.2
+[v0.1.1]: https://github.com/tstellanova/l3gd20/compare/v0.1.0...v0.1.1
