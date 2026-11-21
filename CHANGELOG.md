@@ -13,11 +13,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Bumped Rust edition to 2021
 - Rename `temp` field in `Measurement` to `temp_raw` to make it explicit this is not an actual valid temperature
 - Rename `temp` getter to `temp_raw` and add `temp_celcius` getter
+- Previous SPI driver now lives in `spi` module, to distinguish it from the new
+  I2C driver inside the `i2c` module.
 
 ### Added
 
 - Add `temp_celcius` getter for `Measurement`
 - Add optional `defmt` support
+- I2C driver
 
 ## [v0.3.0] - 2020-09-06
 
